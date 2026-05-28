@@ -263,6 +263,7 @@ MAX_MODEL_LEN="$(resolve_value max_model_len)"
 GPU_MEMORY_UTILIZATION="$(resolve_value gpu_memory_utilization)"
 ENABLE_PREFIX_CACHING="$(resolve_value enable_prefix_caching)"
 ENABLE_AUTO_TOOL_CHOICE="$(resolve_value enable_auto_tool_choice)"
+ENABLE_THINKING="$(resolve_value enable_thinking)"
 SERVED_MODEL_NAME="$(resolve_value served_model_name)"
 REASONING_PARSER="$(resolve_value reasoning_parser)"
 TOOL_CALL_PARSER="$(resolve_value tool_call_parser)"
@@ -279,6 +280,13 @@ is_true "$ENABLE_PREFIX_CACHING" && CMD+=(--enable-prefix-caching)
 [ -n "$GPU_MEMORY_UTILIZATION" ] && CMD+=(--gpu-memory-utilization "$GPU_MEMORY_UTILIZATION")
 [ -n "$REASONING_PARSER" ] && CMD+=(--reasoning-parser "$REASONING_PARSER")
 is_true "$ENABLE_AUTO_TOOL_CHOICE" && CMD+=(--enable-auto-tool-choice)
+[ -n "$ENABLE_THINKING" ] && {
+  if is_true "$ENABLE_THINKING"; then
+    CMD+=(--default-chat-template-kwargs '{"enable_thinking":true}')
+  else
+    CMD+=(--default-chat-template-kwargs '{"enable_thinking":false}')
+  fi
+}
 [ -n "$SERVED_MODEL_NAME" ] && CMD+=(--served-model-name "$SERVED_MODEL_NAME")
 [ -n "$TOOL_CALL_PARSER" ] && CMD+=(--tool-call-parser "$TOOL_CALL_PARSER")
 [ -n "$CUDAGRAPH_MODE" ] && CMD+=("-cc.cudagraph_mode=$CUDAGRAPH_MODE")
@@ -289,6 +297,13 @@ echo "Model: $MODEL"
 [ -n "$SERVED_MODEL_NAME" ] && echo "Served model name: $SERVED_MODEL_NAME"
 [ -n "$CUDA_DEVICES" ] && echo "CUDA_VISIBLE_DEVICES: $CUDA_DEVICES"
 [ -n "$PORT" ] && echo "Port: $PORT"
+[ -n "$ENABLE_THINKING" ] && {
+  if is_true "$ENABLE_THINKING"; then
+    echo "Thinking: enabled"
+  else
+    echo "Thinking: disabled"
+  fi
+}
 echo "Log: $LOG"
 
 if [ -n "$CUDA_DEVICES" ]; then
