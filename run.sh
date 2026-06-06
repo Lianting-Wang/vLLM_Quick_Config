@@ -259,8 +259,10 @@ fi
 CUDA_DEVICES="$(resolve_value cuda_visible_devices)"
 PORT="$(resolve_value port)"
 MAX_NUM_SEQS="$(resolve_value max_num_seqs)"
+MAX_NUM_BATCHED_TOKENS="$(resolve_value max_num_batched_tokens)"
 MAX_MODEL_LEN="$(resolve_value max_model_len)"
 GPU_MEMORY_UTILIZATION="$(resolve_value gpu_memory_utilization)"
+TENSOR_PARALLEL_SIZE="$(resolve_value tensor_parallel_size)"
 ENABLE_PREFIX_CACHING="$(resolve_value enable_prefix_caching)"
 ENABLE_AUTO_TOOL_CHOICE="$(resolve_value enable_auto_tool_choice)"
 ENABLE_THINKING="$(resolve_value enable_thinking)"
@@ -274,8 +276,10 @@ CMD=(uv run vllm serve "$MODEL")
 
 [ -n "$SPECULATIVE_CONFIG" ] && CMD+=(--speculative-config "$SPECULATIVE_CONFIG")
 [ -n "$MAX_NUM_SEQS" ] && CMD+=(--max-num-seqs "$MAX_NUM_SEQS")
+[ -n "$MAX_NUM_BATCHED_TOKENS" ] && CMD+=(--max-num-batched-tokens "$MAX_NUM_BATCHED_TOKENS")
 [ -n "$MAX_MODEL_LEN" ] && CMD+=(--max-model-len "$MAX_MODEL_LEN")
 [ -n "$PORT" ] && CMD+=(--port "$PORT")
+[ -n "$TENSOR_PARALLEL_SIZE" ] && CMD+=(--tensor-parallel-size "$TENSOR_PARALLEL_SIZE")
 is_true "$ENABLE_PREFIX_CACHING" && CMD+=(--enable-prefix-caching)
 [ -n "$GPU_MEMORY_UTILIZATION" ] && CMD+=(--gpu-memory-utilization "$GPU_MEMORY_UTILIZATION")
 [ -n "$REASONING_PARSER" ] && CMD+=(--reasoning-parser "$REASONING_PARSER")
@@ -297,6 +301,8 @@ echo "Model: $MODEL"
 [ -n "$SERVED_MODEL_NAME" ] && echo "Served model name: $SERVED_MODEL_NAME"
 [ -n "$CUDA_DEVICES" ] && echo "CUDA_VISIBLE_DEVICES: $CUDA_DEVICES"
 [ -n "$PORT" ] && echo "Port: $PORT"
+[ -n "$MAX_NUM_BATCHED_TOKENS" ] && echo "Max num batched tokens: $MAX_NUM_BATCHED_TOKENS"
+[ -n "$TENSOR_PARALLEL_SIZE" ] && echo "Tensor parallel size: $TENSOR_PARALLEL_SIZE"
 [ -n "$ENABLE_THINKING" ] && {
   if is_true "$ENABLE_THINKING"; then
     echo "Thinking: enabled"
