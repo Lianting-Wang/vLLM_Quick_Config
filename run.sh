@@ -2,8 +2,6 @@
 set -euo pipefail
 
 CONFIG_FILE="${CONFIG_FILE:-models.conf}"
-LOG=output_$(date +%F_%H-%M-%S).log
-PIDFILE=vllm_server.pid
 
 usage() {
   cat <<EOF
@@ -104,6 +102,10 @@ $(list_profiles)
 EOF
 
   return 1
+}
+
+profile_file_key() {
+  printf '%s\n' "$1" | tr -c '[:alnum:]._' '_'
 }
 
 print_profiles() {
@@ -245,6 +247,10 @@ if ! profile_exists "$PROFILE"; then
   exit 1
 fi
 
+PROFILE_FILE_KEY="$(profile_file_key "$PROFILE")"
+LOG="output_${PROFILE_FILE_KEY}_$(date +%F_%H-%M-%S).log"
+PIDFILE="vllm_server.${PROFILE_FILE_KEY}.pid"
+
 MODEL="$(resolve_value model)"
 if [ -z "$MODEL" ]; then
   echo "No model specified for profile: $PROFILE"
@@ -255,6 +261,8 @@ if [ -f "$PIDFILE" ] && kill -0 "$(cat $PIDFILE)" 2>/dev/null; then
   echo "vLLM already running with PID $(cat $PIDFILE)"
   exit 1
 fi
+
+rm -f "$PIDFILE"
 
 CUDA_DEVICES="$(resolve_value cuda_visible_devices)"
 PORT="$(resolve_value port)"
