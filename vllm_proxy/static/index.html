@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>vLLM Smart Proxy</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main>
+    <header>
+      <div><h1>vLLM Smart Proxy</h1><p>模型休眠、显存状态与转发端口管理</p></div>
+      <button id="refresh">刷新状态</button>
+    </header>
+    <section id="notice" class="notice hidden"></section>
+    <section id="cards" class="cards"></section>
+    <section class="panel">
+      <div class="panel-title"><h2>代理配置</h2><button id="add-backend">添加后端</button></div>
+      <form id="config-form">
+        <div id="config-editor"></div>
+        <div class="actions"><button type="submit" class="primary">保存配置</button></div>
+      </form>
+    </section>
+  </main>
+  <template id="backend-template">
+    <fieldset class="backend-editor">
+      <legend>后端</legend>
+      <div class="grid">
+        <label>ID<input data-field="id" required></label>
+        <label>显示名称<input data-field="name" required></label>
+        <label class="wide">源地址<input data-field="upstream_url" required placeholder="http://127.0.0.1:5000"></label>
+        <label>Profile<input data-field="profile"></label>
+        <label>PID 文件<input data-field="pidfile"></label>
+        <label>空闲休眠（秒）<input data-field="idle_timeout_seconds" type="number" min="0"></label>
+        <label>唤醒超时（秒）<input data-field="wake_timeout_seconds" type="number" min="1"></label>
+      </div>
+      <div class="listener-title"><strong>转发端口</strong><button type="button" data-action="add-listener">添加端口</button></div>
+      <div data-listeners></div>
+      <button type="button" class="danger-link" data-action="remove-backend">删除后端</button>
+    </fieldset>
+  </template>
+  <script src="/app.js"></script>
+</body>
+</html>

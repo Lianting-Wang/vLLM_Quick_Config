@@ -1,0 +1,66 @@
+{
+  "admin": {
+    "host": "127.0.0.1",
+    "port": 5100,
+    "token": ""
+  },
+  "backends": [
+    {
+      "id": "qwen36",
+      "name": "Qwen 3.6",
+      "upstream_url": "http://127.0.0.1:4000",
+      "profile": "qwen3.6_uncensored",
+      "pidfile": "vllm_server.qwen3.6_uncensored_.pid",
+      "idle_timeout_seconds": 1800,
+      "wake_timeout_seconds": 180,
+      "sleep_level": 1,
+      "listeners": [
+        {
+          "host": "0.0.0.0",
+          "port": 5000,
+          "mode": "passthrough",
+          "enabled": true,
+          "name": "Qwen Normal API"
+        },
+        {
+          "host": "0.0.0.0",
+          "port": 5010,
+          "mode": "no_thinking",
+          "enabled": true,
+          "name": "Qwen No Thinking API"
+        }
+      ],
+      "idle_ignore_paths": [
+        "/health",
+        "/ping",
+        "/version",
+        "/v1/models"
+      ]
+    },
+    {
+      "id": "minicpm5",
+      "name": "MiniCPM5 1B Fast",
+      "upstream_url": "http://127.0.0.1:4001",
+      "profile": "minicpm5_1b_fast",
+      "pidfile": "vllm_server.minicpm5_1b_fast_.pid",
+      "idle_timeout_seconds": 600,
+      "wake_timeout_seconds": 180,
+      "sleep_level": 1,
+      "listeners": [
+        {
+          "host": "0.0.0.0",
+          "port": 5001,
+          "mode": "passthrough",
+          "enabled": true,
+          "name": "MiniCPM API"
+        }
+      ],
+      "idle_ignore_paths": [
+        "/health",
+        "/ping",
+        "/version",
+        "/v1/models"
+      ]
+    }
+  ]
+}

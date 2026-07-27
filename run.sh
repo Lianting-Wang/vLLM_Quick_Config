@@ -265,7 +265,10 @@ fi
 rm -f "$PIDFILE"
 
 CUDA_DEVICES="$(resolve_value cuda_visible_devices)"
+HOST="$(resolve_value host)"
 PORT="$(resolve_value port)"
+ENABLE_SLEEP_MODE="$(resolve_value enable_sleep_mode)"
+SERVER_DEV_MODE="$(resolve_value server_dev_mode)"
 MAX_NUM_SEQS="$(resolve_value max_num_seqs)"
 MAX_NUM_BATCHED_TOKENS="$(resolve_value max_num_batched_tokens)"
 MAX_MODEL_LEN="$(resolve_value max_model_len)"
@@ -286,7 +289,9 @@ CMD=(uv run vllm serve "$MODEL")
 [ -n "$MAX_NUM_SEQS" ] && CMD+=(--max-num-seqs "$MAX_NUM_SEQS")
 [ -n "$MAX_NUM_BATCHED_TOKENS" ] && CMD+=(--max-num-batched-tokens "$MAX_NUM_BATCHED_TOKENS")
 [ -n "$MAX_MODEL_LEN" ] && CMD+=(--max-model-len "$MAX_MODEL_LEN")
+[ -n "$HOST" ] && CMD+=(--host "$HOST")
 [ -n "$PORT" ] && CMD+=(--port "$PORT")
+is_true "$ENABLE_SLEEP_MODE" && CMD+=(--enable-sleep-mode)
 [ -n "$TENSOR_PARALLEL_SIZE" ] && CMD+=(--tensor-parallel-size "$TENSOR_PARALLEL_SIZE")
 is_true "$ENABLE_PREFIX_CACHING" && CMD+=(--enable-prefix-caching)
 [ -n "$GPU_MEMORY_UTILIZATION" ] && CMD+=(--gpu-memory-utilization "$GPU_MEMORY_UTILIZATION")
@@ -308,7 +313,9 @@ echo "Profile: $PROFILE"
 echo "Model: $MODEL"
 [ -n "$SERVED_MODEL_NAME" ] && echo "Served model name: $SERVED_MODEL_NAME"
 [ -n "$CUDA_DEVICES" ] && echo "CUDA_VISIBLE_DEVICES: $CUDA_DEVICES"
+[ -n "$HOST" ] && echo "Host: $HOST"
 [ -n "$PORT" ] && echo "Port: $PORT"
+is_true "$ENABLE_SLEEP_MODE" && echo "Sleep mode: enabled"
 [ -n "$MAX_NUM_BATCHED_TOKENS" ] && echo "Max num batched tokens: $MAX_NUM_BATCHED_TOKENS"
 [ -n "$TENSOR_PARALLEL_SIZE" ] && echo "Tensor parallel size: $TENSOR_PARALLEL_SIZE"
 [ -n "$ENABLE_THINKING" ] && {
@@ -319,6 +326,10 @@ echo "Model: $MODEL"
   fi
 }
 echo "Log: $LOG"
+
+if is_true "$SERVER_DEV_MODE"; then
+  export VLLM_SERVER_DEV_MODE=1
+fi
 
 if [ -n "$CUDA_DEVICES" ]; then
   CUDA_VISIBLE_DEVICES="$CUDA_DEVICES" nohup "${CMD[@]}" >> "$LOG" 2>&1 &

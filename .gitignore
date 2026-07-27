@@ -2,3 +2,5 @@
 *.log
 *.pid
 models
+__pycache__
+uv.lock
