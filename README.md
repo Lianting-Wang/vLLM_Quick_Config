@@ -122,7 +122,7 @@ POST /wake_up
 GET  /is_sleeping
 ```
 
-Health and model-list probes do not reset the idle timer. A streaming request remains active until the stream finishes or disconnects. Concurrent requests arriving while one model is sleeping share one wake operation for that model.
+Health and model-list probes do not reset the idle timer. A streaming request remains active until the stream finishes or disconnects. Concurrent callers share one sleep or wake transition per backend. Actual sleep and wake commands are serialized, so a request arriving during `/sleep` waits for that transition, wakes the model, and then continues without leaving a false error state.
 
 The public proxy blocks privileged paths such as `/sleep`, `/wake_up`, `/collective_rpc`, and cache-reset endpoints.
 
@@ -131,7 +131,21 @@ Level 1 sleep offloads model weights to CPU RAM and discards KV cache. It releas
 ## 7. Test
 
 ```bash
-uv run pytest
-python -m compileall vllm_proxy
-bash -n run.sh run_proxy.sh stop_proxy.sh stop.sh
+uv run --extra test pytest
+./run_sleep_wake_tests.sh
+python -m compileall vllm_proxy tests
+bash -n run.sh run_proxy.sh stop_proxy.sh stop.sh run_sleep_wake_tests.sh
 ```
+
+## Live integration test against running models
+
+After the deterministic test suite passes, run the maintenance-window integration
+test to operate the real configured vLLM instances:
+
+```bash
+./run_live_model_tests.sh
+```
+
+It performs real inference, manual sleep/wake, concurrent wake, streaming protection,
+automatic idle sleep, GPU-memory checks, and independent timer checks. See
+[`LIVE_MODEL_TESTING.md`](LIVE_MODEL_TESTING.md) before running it.

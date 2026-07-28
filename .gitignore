@@ -10,3 +10,4 @@ uv.lock
 .pytest_cache
 logs/
 .DS_Store
+live_test_report_*.json

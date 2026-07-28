@@ -10,6 +10,9 @@ from aiohttp import web
 
 from .backend import BackendController
 
+BACKEND_KEY = web.AppKey("backend", BackendController)
+LISTENER_MODE_KEY = web.AppKey("listener_mode", str)
+
 LOGGER = logging.getLogger(__name__)
 
 HOP_BY_HOP_HEADERS = {
@@ -68,8 +71,8 @@ def inject_no_thinking(body: bytes, content_type: str, path: str) -> bytes:
 
 
 async def proxy_request(request: web.Request) -> web.StreamResponse:
-    backend: BackendController = request.app["backend"]
-    mode: str = request.app["listener_mode"]
+    backend = request.app[BACKEND_KEY]
+    mode = request.app[LISTENER_MODE_KEY]
     if request.path in BLOCKED_PATHS:
         raise web.HTTPNotFound()
 
@@ -130,7 +133,7 @@ async def proxy_request(request: web.Request) -> web.StreamResponse:
 
 def create_listener_app(backend: BackendController, mode: str) -> web.Application:
     app = web.Application(client_max_size=1024**3)
-    app["backend"] = backend
-    app["listener_mode"] = mode
+    app[BACKEND_KEY] = backend
+    app[LISTENER_MODE_KEY] = mode
     app.router.add_route("*", "/{tail:.*}", proxy_request)
     return app
