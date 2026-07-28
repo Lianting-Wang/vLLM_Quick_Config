@@ -100,3 +100,8 @@ live_test_report_YYYYMMDD_HHMMSS.json
 
 A zero exit code means every enabled live test passed. A nonzero exit code means at
 least one test failed or cleanup could not be completed.
+
+
+## Transition verification
+
+Live tests verify exactly one upstream `/sleep` or `/wake_up` command using in-process counters exposed by `/api/status`. Text logs are retained only as diagnostics. Restart the proxy after updating project files so the running proxy version matches the test code.

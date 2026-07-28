@@ -14,6 +14,7 @@ from typing import Any
 import aiohttp
 from aiohttp import web
 
+from . import __version__
 from .auth import (
     COOKIE_NAME,
     create_session_token,
@@ -232,7 +233,12 @@ class ProxyServer:
         return response
 
     async def api_status(self, request: web.Request) -> web.Response:
-        return web.json_response({"backends": [backend.status() for backend in self.backends.values()]})
+        return web.json_response(
+            {
+                "proxy_version": __version__,
+                "backends": [backend.status() for backend in self.backends.values()],
+            }
+        )
 
     async def api_get_config(self, request: web.Request) -> web.Response:
         assert self.config

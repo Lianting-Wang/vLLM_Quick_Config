@@ -149,3 +149,8 @@ test to operate the real configured vLLM instances:
 It performs real inference, manual sleep/wake, concurrent wake, streaming protection,
 automatic idle sleep, GPU-memory checks, and independent timer checks. See
 [`LIVE_MODEL_TESTING.md`](LIVE_MODEL_TESTING.md) before running it.
+
+
+## Transition verification
+
+Live tests verify exactly one upstream `/sleep` or `/wake_up` command using in-process counters exposed by `/api/status`. Text logs are retained only as diagnostics. Restart the proxy after updating project files so the running proxy version matches the test code.

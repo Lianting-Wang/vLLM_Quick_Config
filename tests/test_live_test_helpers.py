@@ -6,6 +6,7 @@ from tools.live_model_sleep_wake_test import (
     extract_model_memory,
     listener_url,
     local_url,
+    transition_counter,
 )
 from vllm_proxy.config import BackendConfig, ListenerConfig
 
@@ -47,3 +48,11 @@ def test_count_log_event(tmp_path: Path) -> None:
     )
     assert count_log_event(log, "qwen", "wake_requested") == 2
     assert count_log_event(log, "minicpm", "wake_requested") == 1
+
+
+def test_transition_counter_reads_running_controller_counter() -> None:
+    status = {"transition_counters": {"sleep_commands": 3, "wake_commands": 4}}
+    assert transition_counter(status, "sleep_commands") == 3
+    assert transition_counter(status, "wake_commands") == 4
+    assert transition_counter(status, "missing") is None
+    assert transition_counter({}, "sleep_commands") is None

@@ -19,6 +19,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from vllm_proxy import __version__ as LOCAL_PROXY_VERSION  # noqa: E402
 from vllm_proxy.auth import load_admin_credentials  # noqa: E402
 from vllm_proxy.config import BackendConfig, ListenerConfig, ProxyConfig, load_config  # noqa: E402
 
@@ -102,6 +103,14 @@ def count_log_event(path: Path | None, backend_id: str, action: str) -> int | No
         return None
 
 
+def transition_counter(status: dict[str, Any], name: str) -> int | None:
+    counters = status.get("transition_counters")
+    if not isinstance(counters, dict):
+        return None
+    value = counters.get(name)
+    return int(value) if isinstance(value, int) and not isinstance(value, bool) else None
+
+
 def extract_model_memory(status: dict[str, Any]) -> float | None:
     gpu = status.get("gpu")
     if not isinstance(gpu, dict) or not gpu.get("available"):
@@ -129,6 +138,7 @@ class LiveModelTester:
             self.api_headers["Authorization"] = f"Bearer {args.api_key}"
         self.proxy_log = latest_proxy_log(PROJECT_ROOT)
         self.model_ids: dict[str, str] = {}
+        self.running_proxy_version: str | None = None
 
     async def run(self) -> RunReport:
         self.config = await load_config(self.config_path)
@@ -271,9 +281,15 @@ class LiveModelTester:
         await self._admin_json("PUT", "/api/config", json_body=payload)
         await asyncio.sleep(0.5)
 
-    async def _status_map(self) -> dict[str, dict[str, Any]]:
+    async def _status_payload(self) -> dict[str, Any]:
         _, payload = await self._admin_json("GET", "/api/status")
-        backends = payload.get("backends", []) if isinstance(payload, dict) else []
+        if not isinstance(payload, dict):
+            raise LiveTestFailure("admin status response is not an object")
+        return payload
+
+    async def _status_map(self) -> dict[str, dict[str, Any]]:
+        payload = await self._status_payload()
+        backends = payload.get("backends", [])
         return {str(item.get("id")): item for item in backends if isinstance(item, dict)}
 
     async def _backend_status(self, backend_id: str) -> dict[str, Any]:
@@ -328,7 +344,25 @@ class LiveModelTester:
         return None
 
     async def _preflight(self, selected: list[BackendConfig]) -> dict[str, Any]:
-        detail: dict[str, Any] = {"proxy_log": str(self.proxy_log) if self.proxy_log else None, "backends": {}}
+        payload = await self._status_payload()
+        version = payload.get("proxy_version")
+        self.running_proxy_version = str(version) if version is not None else None
+        if self.running_proxy_version != LOCAL_PROXY_VERSION:
+            if self.running_proxy_version is None:
+                raise LiveTestFailure(
+                    "the running proxy does not expose proxy_version; it is older than the "
+                    "test code on disk. Restart it with ./stop_proxy.sh && ./run_proxy.sh"
+                )
+            raise LiveTestFailure(
+                f"running proxy version {self.running_proxy_version} does not match local "
+                f"test version {LOCAL_PROXY_VERSION}; restart it with "
+                "./stop_proxy.sh && ./run_proxy.sh"
+            )
+        detail: dict[str, Any] = {
+            "proxy_version": self.running_proxy_version,
+            "proxy_log": str(self.proxy_log) if self.proxy_log else None,
+            "backends": {},
+        }
         for backend in selected:
             status = await self._backend_status(backend.id)
             probe = await self._probe(backend.id)
@@ -418,27 +452,40 @@ class LiveModelTester:
     async def _manual_sleep(self, backend: BackendConfig) -> dict[str, Any]:
         before = await self._backend_status(backend.id)
         before_mib = extract_model_memory(before)
+        before_counter = transition_counter(before, "sleep_commands")
         before_log = count_log_event(self.proxy_log, backend.id, "sleep_requested")
-        await self._sleep(backend.id)
+        sleep_response = await self._sleep(backend.id)
         direct = await self._direct_sleep_state(backend)
         if direct is not True:
             raise LiveTestFailure(f"upstream /is_sleeping did not confirm sleep: {direct}")
         await asyncio.sleep(self.args.memory_settle_seconds)
         after = await self._backend_status(backend.id)
         after_mib = extract_model_memory(after)
+        after_counter = transition_counter(after, "sleep_commands")
         after_log = count_log_event(self.proxy_log, backend.id, "sleep_requested")
+        counter_delta = (
+            None
+            if before_counter is None or after_counter is None
+            else after_counter - before_counter
+        )
+        log_delta = None if before_log is None or after_log is None else after_log - before_log
         detail: dict[str, Any] = {
+            "sleep_response": sleep_response,
             "memory_before_mib": before_mib,
             "memory_after_mib": after_mib,
             "memory_drop_mib": None,
-            "sleep_log_delta": None,
+            "sleep_command_delta": counter_delta,
+            "sleep_log_delta": log_delta,
         }
-        if not self.args.skip_log_count_check and before_log is not None and after_log is not None:
-            detail["sleep_log_delta"] = after_log - before_log
-            if after_log - before_log != 1:
+        if not self.args.skip_transition_count_check:
+            if counter_delta is None:
                 raise LiveTestFailure(
-                    f"expected one sleep_requested log event, observed {after_log - before_log}; "
-                    "ensure no other admin client is controlling this backend during the test"
+                    "running proxy does not expose sleep transition counters; restart it "
+                    "with ./stop_proxy.sh && ./run_proxy.sh"
+                )
+            if counter_delta != 1:
+                raise LiveTestFailure(
+                    f"expected one upstream /sleep command, observed {counter_delta}"
                 )
         if before_mib is not None and after_mib is not None:
             drop = before_mib - after_mib
@@ -453,7 +500,9 @@ class LiveModelTester:
         return detail
 
     async def _request_wake(self, backend: BackendConfig) -> dict[str, Any]:
-        before = count_log_event(self.proxy_log, backend.id, "wake_requested")
+        before_status = await self._backend_status(backend.id)
+        before_counter = transition_counter(before_status, "wake_commands")
+        before_log = count_log_event(self.proxy_log, backend.id, "wake_requested")
         started = time.monotonic()
         model = self.model_ids[backend.id]
         result = await self._chat(backend, model=model)
@@ -463,20 +512,36 @@ class LiveModelTester:
         if direct is True:
             raise LiveTestFailure("request completed but upstream still reports sleeping")
         await asyncio.sleep(0.3)
-        after = count_log_event(self.proxy_log, backend.id, "wake_requested")
-        delta = None if before is None or after is None else after - before
-        if not self.args.skip_log_count_check and delta is not None and delta != 1:
-            raise LiveTestFailure(f"expected exactly one wake_requested event, observed {delta}")
+        after_status = await self._backend_status(backend.id)
+        after_counter = transition_counter(after_status, "wake_commands")
+        after_log = count_log_event(self.proxy_log, backend.id, "wake_requested")
+        counter_delta = (
+            None
+            if before_counter is None or after_counter is None
+            else after_counter - before_counter
+        )
+        log_delta = None if before_log is None or after_log is None else after_log - before_log
+        if not self.args.skip_transition_count_check:
+            if counter_delta is None:
+                raise LiveTestFailure(
+                    "running proxy does not expose wake transition counters; restart it "
+                    "with ./stop_proxy.sh && ./run_proxy.sh"
+                )
+            if counter_delta != 1:
+                raise LiveTestFailure(f"expected exactly one upstream /wake_up command, observed {counter_delta}")
         return {
             "model": result["model"],
             "total_latency_seconds": total,
             "reported_wake_duration_ms": status.get("last_wake_duration_ms"),
-            "wake_log_delta": delta,
+            "wake_command_delta": counter_delta,
+            "wake_log_delta": log_delta,
         }
 
     async def _burst_wake(self, backend: BackendConfig) -> dict[str, Any]:
         await self._sleep(backend.id)
-        before = count_log_event(self.proxy_log, backend.id, "wake_requested")
+        before_status = await self._backend_status(backend.id)
+        before_counter = transition_counter(before_status, "wake_commands")
+        before_log = count_log_event(self.proxy_log, backend.id, "wake_requested")
         model = self.model_ids[backend.id]
         start_gate = asyncio.Event()
 
@@ -495,15 +560,30 @@ class LiveModelTester:
         outputs = await asyncio.gather(*tasks)
         await self._wait_state(backend.id, {"awake"}, self.args.request_timeout)
         await asyncio.sleep(0.5)
-        after = count_log_event(self.proxy_log, backend.id, "wake_requested")
-        delta = None if before is None or after is None else after - before
-        if not self.args.skip_log_count_check and delta is not None and delta != 1:
-            raise LiveTestFailure(
-                f"{self.args.concurrency} concurrent requests produced {delta} wake_requested events"
-            )
+        after_status = await self._backend_status(backend.id)
+        after_counter = transition_counter(after_status, "wake_commands")
+        after_log = count_log_event(self.proxy_log, backend.id, "wake_requested")
+        counter_delta = (
+            None
+            if before_counter is None or after_counter is None
+            else after_counter - before_counter
+        )
+        log_delta = None if before_log is None or after_log is None else after_log - before_log
+        if not self.args.skip_transition_count_check:
+            if counter_delta is None:
+                raise LiveTestFailure(
+                    "running proxy does not expose wake transition counters; restart it "
+                    "with ./stop_proxy.sh && ./run_proxy.sh"
+                )
+            if counter_delta != 1:
+                raise LiveTestFailure(
+                    f"{self.args.concurrency} concurrent requests produced "
+                    f"{counter_delta} upstream /wake_up commands"
+                )
         return {
             "concurrency": self.args.concurrency,
-            "wake_log_delta": delta,
+            "wake_command_delta": counter_delta,
+            "wake_log_delta": log_delta,
             "latency_seconds": {
                 "minimum": min(outputs),
                 "maximum": max(outputs),
@@ -735,9 +815,15 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--skip-auto-idle", action="store_true")
     parser.add_argument("--skip-independent-timers", action="store_true")
     parser.add_argument(
-        "--skip-log-count-check",
+        "--skip-transition-count-check",
         action="store_true",
-        help="Do not require exactly one sleep/wake log event; useful when other clients are active",
+        help="Do not require exactly one upstream sleep/wake command",
+    )
+    parser.add_argument(
+        "--skip-log-count-check",
+        dest="skip_transition_count_check",
+        action="store_true",
+        help=argparse.SUPPRESS,
     )
     parser.add_argument(
         "--report",

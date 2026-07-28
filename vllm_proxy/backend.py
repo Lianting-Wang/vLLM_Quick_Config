@@ -50,6 +50,14 @@ class BackendController:
         self.last_error = ""
         self.last_sleep_duration_ms: int | None = None
         self.last_wake_duration_ms: int | None = None
+        # Monotonic in-process counters used by diagnostics and the live
+        # integration test.  Unlike parsing a log file, these values are tied
+        # to the exact running controller and cannot be affected by buffering,
+        # rotation, or stale log selection.
+        self.sleep_command_count = 0
+        self.sleep_complete_count = 0
+        self.wake_command_count = 0
+        self.wake_complete_count = 0
 
         self._state_lock = asyncio.Lock()
         self._no_active_requests = asyncio.Condition(self._state_lock)
@@ -199,6 +207,8 @@ class BackendController:
                     self.state = BackendState.WAKING
                     self.last_error = ""
 
+                async with self._state_lock:
+                    self.wake_command_count += 1
                 LOGGER.info("backend=%s action=wake_requested", self.config.id)
                 async with await self._request(
                     "POST",
@@ -217,6 +227,7 @@ class BackendController:
                             self.state = BackendState.AWAKE
                             self.last_error = ""
                             self.last_wake_duration_ms = duration
+                            self.wake_complete_count += 1
                         LOGGER.info("backend=%s action=wake_complete duration_ms=%s", self.config.id, duration)
                         return
                     await asyncio.sleep(self._poll_interval())
@@ -314,6 +325,8 @@ class BackendController:
                     if retry_after_unlock:
                         continue
 
+                    async with self._state_lock:
+                        self.sleep_command_count += 1
                     LOGGER.info("backend=%s action=sleep_requested", self.config.id)
                     async with await self._request(
                         "POST",
@@ -332,6 +345,7 @@ class BackendController:
                                 self.state = BackendState.SLEEPING
                                 self.last_error = ""
                                 self.last_sleep_duration_ms = duration
+                                self.sleep_complete_count += 1
                             LOGGER.info("backend=%s action=sleep_complete duration_ms=%s", self.config.id, duration)
                             return {"status": "sleeping"}
                         await asyncio.sleep(self._poll_interval())
@@ -399,6 +413,12 @@ class BackendController:
             "last_error": self.last_error,
             "last_sleep_duration_ms": self.last_sleep_duration_ms,
             "last_wake_duration_ms": self.last_wake_duration_ms,
+            "transition_counters": {
+                "sleep_commands": self.sleep_command_count,
+                "sleep_completions": self.sleep_complete_count,
+                "wake_commands": self.wake_command_count,
+                "wake_completions": self.wake_complete_count,
+            },
             "listeners": [item.to_dict() for item in self.config.listeners],
             "gpu": self.gpu_monitor.snapshot(self.config.pidfile),
         }

@@ -159,6 +159,8 @@ async def test_burst_requests_share_one_wake_command() -> None:
         await asyncio.gather(*(controller.ensure_awake() for _ in range(25)))
         assert fake.wake_calls == 1
         assert controller.state == BackendState.AWAKE
+        assert controller.status()["transition_counters"]["wake_commands"] == 1
+        assert controller.status()["transition_counters"]["wake_completions"] == 1
 
 
 @pytest.mark.asyncio
@@ -174,6 +176,8 @@ async def test_concurrent_sleep_requests_share_one_sleep_command() -> None:
         )
         assert all(result["status"] in {"sleeping", "already_sleeping"} for result in results)
         assert controller.state == BackendState.SLEEPING
+        assert controller.status()["transition_counters"]["sleep_commands"] == 1
+        assert controller.status()["transition_counters"]["sleep_completions"] == 1
 
 
 @pytest.mark.asyncio
