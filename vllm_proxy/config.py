@@ -91,18 +91,22 @@ class BackendConfig:
 class AdminConfig:
     host: str = "127.0.0.1"
     port: int = 8070
-    token: str = ""
+    session_ttl_hours: int = 168
 
     @classmethod
     def from_dict(cls, value: dict[str, Any]) -> "AdminConfig":
         return cls(
             host=str(value.get("host", "127.0.0.1")),
             port=int(value.get("port", 8070)),
-            token=str(value.get("token", "")),
+            session_ttl_hours=int(value.get("session_ttl_hours", 168)),
         )
 
     def to_dict(self) -> dict[str, Any]:
-        return {"host": self.host, "port": self.port, "token": self.token}
+        return {
+            "host": self.host,
+            "port": self.port,
+            "session_ttl_hours": self.session_ttl_hours,
+        }
 
 
 @dataclass(slots=True)
@@ -139,9 +143,8 @@ def _validate_port(port: int, field_name: str) -> None:
 def validate_config(config: ProxyConfig) -> None:
     _validate_host(config.admin.host, "admin.host")
     _validate_port(config.admin.port, "admin.port")
-    if config.admin.host not in {"127.0.0.1", "::1", "localhost"} and not config.admin.token:
-        raise ValueError("admin.token is required when the admin interface is not localhost-only")
-
+    if config.admin.session_ttl_hours <= 0:
+        raise ValueError("admin.session_ttl_hours must be positive")
     ids: set[str] = set()
     endpoints: set[tuple[str, int]] = {(config.admin.host, config.admin.port)}
     any_host_ports: set[int] = {config.admin.port} if config.admin.host in {"0.0.0.0", "::"} else set()
@@ -177,7 +180,11 @@ def validate_config(config: ProxyConfig) -> None:
 def default_config() -> ProxyConfig:
     return ProxyConfig.from_dict(
         {
-            "admin": {"host": "127.0.0.1", "port": 8070, "token": ""},
+            "admin": {
+                "host": "127.0.0.1",
+                "port": 8070,
+                "session_ttl_hours": 168,
+            },
             "backends": [
                 {
                     "id": "qwen36",

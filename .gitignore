@@ -4,3 +4,9 @@
 models
 __pycache__
 uv.lock
+.env
+.env.*
+!.env.example
+.pytest_cache
+logs/
+.DS_Store

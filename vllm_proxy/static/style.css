@@ -16,3 +16,9 @@ button.primary { background:#2762d9; border-color:#3475f6; } button.danger { bac
 .panel { padding:20px; }.backend-editor { margin:16px 0;padding:18px; }.backend-editor legend{padding:0 8px;color:#a9b7ca}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.wide{grid-column:1/-1}
 label{display:flex;flex-direction:column;gap:6px;color:#a9b7ca;font-size:13px}input,select{width:100%;padding:9px 10px;border:1px solid #344054;border-radius:8px;background:#0f1621;color:#e8edf5}.listener-title{margin:18px 0 8px}.listener-row{display:grid;grid-template-columns:1.2fr .8fr 1fr 1.3fr auto;gap:8px;align-items:end;margin:8px 0}.checkbox{align-items:center;flex-direction:row;padding-bottom:10px}.checkbox input{width:auto}.danger-link{margin-top:12px;color:#ff9aaa}
 @media(max-width:720px){.grid{grid-template-columns:1fr}.wide{grid-column:auto}.listener-row{grid-template-columns:1fr 1fr}.listener-row button{grid-column:1/-1}}
+.header-actions { display:flex; gap:8px; }
+.login-body { display:grid; place-items:center; }
+.login-main { width:min(440px, calc(100% - 32px)); padding:0; }
+.login-card { background:rgba(20,27,39,.96); border:1px solid #2b3749; border-radius:14px; padding:28px; box-shadow:0 16px 48px rgba(0,0,0,.3); }
+.login-card p { color:#8f9bad; margin:10px 0 22px; line-height:1.5; }
+.login-card form { display:grid; gap:16px; }
