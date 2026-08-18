@@ -14,7 +14,7 @@ uv sync --extra test
 Start a profile directly:
 
 ```bash
-./run.sh qwen3.6_uncensored
+./run.sh qwen3.8
 ./run.sh minicpm5_1b_fast
 ```
 
@@ -23,7 +23,7 @@ Run `./run.sh` without arguments to select a profile interactively.
 Stop a profile directly:
 
 ```bash
-./stop.sh qwen3.6_uncensored
+./stop.sh qwen3.8
 ```
 
 Run `./stop.sh` without arguments to select one of the currently running models or stop all running models. Other commands:
@@ -33,7 +33,7 @@ Run `./stop.sh` without arguments to select one of the currently running models 
 ./stop.sh --all
 ```
 
-The source vLLM ports listen only on `127.0.0.1`, use `--enable-sleep-mode`, and set `VLLM_SERVER_DEV_MODE=1`. Do not expose source ports publicly because vLLM development mode includes privileged management endpoints.
+The source vLLM ports listen only on `127.0.0.1`, use `--enable-sleep-mode`, and set `VLLM_SERVER_DEV_MODE=1`. Qwen 3.8 uses source port `4000` and launches `Qwen/Qwen3.8-27B-FP8` with TP=2, `--mm-encoder-tp-mode data`, Qwen tool/reasoning parsers, 0.5 GPU-memory utilization, and 3-token MTP speculative decoding. Do not expose source ports publicly because vLLM development mode includes privileged management endpoints.
 
 ## 3. Configure administration authentication
 
@@ -91,8 +91,8 @@ Administration authentication is always enabled, including when the page listens
 
 The supplied configuration exposes:
 
-- `http://HOST:5000/v1/...` — Qwen normal transparent API.
-- `http://HOST:5010/v1/...` — Qwen API with `chat_template_kwargs.enable_thinking=false`.
+- `http://HOST:5000/v1/...` — Qwen 3.8 transparent API.
+- `http://HOST:5010/v1/...` — Qwen 3.8 API with `chat_template_kwargs.enable_thinking=false`.
 - `http://HOST:5001/v1/...` — MiniCPM transparent API.
 - `http://ADMIN_HOST:5100` — administration page.
 
@@ -108,7 +108,7 @@ The proxy does not start or terminate vLLM. Start the required profiles separate
 
 Edit `proxy_config.json` directly or use the web page. Each backend has its own source URL, idle timer, active request count, sleep/wake state machine, wake timeout, listener ports, manual controls, and GPU-memory status.
 
-Qwen and MiniCPM idle timers are completely independent. A request sent to one backend does not reset the other backend's timer.
+Qwen 3.8, and MiniCPM idle timers are completely independent. A request sent to one backend does not reset the other backend's timer.
 
 Changing listener ports from the web page takes effect immediately. Changing the administration host or port requires restarting the proxy.
 

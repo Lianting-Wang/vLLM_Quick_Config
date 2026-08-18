@@ -282,6 +282,7 @@ REASONING_PARSER="$(resolve_value reasoning_parser)"
 TOOL_CALL_PARSER="$(resolve_value tool_call_parser)"
 SPECULATIVE_CONFIG="$(resolve_value speculative_config)"
 CUDAGRAPH_MODE="$(resolve_value cudagraph_mode)"
+MM_ENCODER_TP_MODE="$(resolve_value mm_encoder_tp_mode)"
 
 CMD=(uv run vllm serve "$MODEL")
 
@@ -306,6 +307,7 @@ is_true "$ENABLE_AUTO_TOOL_CHOICE" && CMD+=(--enable-auto-tool-choice)
 }
 [ -n "$SERVED_MODEL_NAME" ] && CMD+=(--served-model-name "$SERVED_MODEL_NAME")
 [ -n "$TOOL_CALL_PARSER" ] && CMD+=(--tool-call-parser "$TOOL_CALL_PARSER")
+[ -n "$MM_ENCODER_TP_MODE" ] && CMD+=(--mm-encoder-tp-mode "$MM_ENCODER_TP_MODE")
 [ -n "$CUDAGRAPH_MODE" ] && CMD+=("-cc.cudagraph_mode=$CUDAGRAPH_MODE")
 
 echo "Starting vLLM."
@@ -318,6 +320,7 @@ echo "Model: $MODEL"
 is_true "$ENABLE_SLEEP_MODE" && echo "Sleep mode: enabled"
 [ -n "$MAX_NUM_BATCHED_TOKENS" ] && echo "Max num batched tokens: $MAX_NUM_BATCHED_TOKENS"
 [ -n "$TENSOR_PARALLEL_SIZE" ] && echo "Tensor parallel size: $TENSOR_PARALLEL_SIZE"
+[ -n "$MM_ENCODER_TP_MODE" ] && echo "MM encoder TP mode: $MM_ENCODER_TP_MODE"
 [ -n "$ENABLE_THINKING" ] && {
   if is_true "$ENABLE_THINKING"; then
     echo "Thinking: enabled"

@@ -6,11 +6,11 @@
   },
   "backends": [
     {
-      "id": "qwen36",
-      "name": "Qwen 3.6",
+      "id": "qwen38",
+      "name": "Qwen 3.8",
       "upstream_url": "http://127.0.0.1:4000",
-      "profile": "qwen3.6_uncensored",
-      "pidfile": "vllm_server.qwen3.6_uncensored_.pid",
+      "profile": "qwen3.8",
+      "pidfile": "vllm_server.qwen3.8_.pid",
       "idle_timeout_seconds": 1800,
       "wake_timeout_seconds": 180,
       "sleep_level": 1,
@@ -20,14 +20,14 @@
           "port": 5000,
           "mode": "passthrough",
           "enabled": true,
-          "name": "Qwen Normal API"
+          "name": "Qwen 3.8 Normal API"
         },
         {
           "host": "0.0.0.0",
           "port": 5010,
           "mode": "no_thinking",
           "enabled": true,
-          "name": "Qwen No Thinking API"
+          "name": "Qwen 3.8 No Thinking API"
         }
       ],
       "idle_ignore_paths": [
@@ -43,7 +43,7 @@
       "upstream_url": "http://127.0.0.1:4001",
       "profile": "minicpm5_1b_fast",
       "pidfile": "vllm_server.minicpm5_1b_fast_.pid",
-      "idle_timeout_seconds": 600,
+      "idle_timeout_seconds": 2699999,
       "wake_timeout_seconds": 180,
       "sleep_level": 1,
       "listeners": [
