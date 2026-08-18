@@ -14,7 +14,7 @@ uv sync --extra test
 Start a profile directly:
 
 ```bash
-./run.sh qwen3.8
+./run.sh qwen3.8_uncensored
 ./run.sh minicpm5_1b_fast
 ```
 
@@ -23,7 +23,7 @@ Run `./run.sh` without arguments to select a profile interactively.
 Stop a profile directly:
 
 ```bash
-./stop.sh qwen3.8
+./stop.sh qwen3.8_uncensored
 ```
 
 Run `./stop.sh` without arguments to select one of the currently running models or stop all running models. Other commands:
