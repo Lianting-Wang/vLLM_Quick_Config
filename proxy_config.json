@@ -11,7 +11,7 @@
       "upstream_url": "http://127.0.0.1:4000",
       "profile": "qwen3.8",
       "pidfile": "vllm_server.qwen3.8_.pid",
-      "idle_timeout_seconds": 1800,
+      "idle_timeout_seconds": 2699999,
       "wake_timeout_seconds": 180,
       "sleep_level": 1,
       "listeners": [
@@ -43,7 +43,7 @@
       "upstream_url": "http://127.0.0.1:4001",
       "profile": "minicpm5_1b_fast",
       "pidfile": "vllm_server.minicpm5_1b_fast_.pid",
-      "idle_timeout_seconds": 2699999,
+      "idle_timeout_seconds": 600,
       "wake_timeout_seconds": 180,
       "sleep_level": 1,
       "listeners": [
